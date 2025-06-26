@@ -69,9 +69,18 @@ The agent runs locally and integrates with Amazon Bedrock for AI capabilities wh
    ```
 
 2. **Start the agent:**
+   
+   **Default (Headless mode):**
    ```bash
    python web_automation_agent.py
    ```
+   
+   **Visible browser mode:**
+   ```bash
+   python web_automation_agent.py --visible
+   ```
+   
+   The agent runs in headless mode by default for efficient automation. Use the `--visible` flag when you want to see the browser interactions in real-time.
 
 ### Example Interactions
 
@@ -113,6 +122,18 @@ web_automation_agent/
 
 ## 🔧 Configuration
 
+### Browser Display Mode
+
+The agent supports two browser modes:
+
+- **Headless Mode (Default)**: Browser runs invisibly in the background for efficient automation
+- **Visible Mode**: Browser window is displayed so you can watch the automation in real-time
+
+Use the `--visible` flag to run in visible mode:
+```bash
+python web_automation_agent.py --visible
+```
+
 ### Model Configuration
 
 The agent uses Claude 3.7 Sonnet by default. You can modify the model in `web_automation_agent.py`:
@@ -127,16 +148,13 @@ agent = Agent(
 
 ### Playwright Configuration
 
-The agent runs Playwright in headless mode by default. To run with a visible browser, modify the MCP client parameters:
+The agent runs Playwright in headless mode by default for efficient automation. To run with a visible browser, use the `--visible` command-line flag:
 
-```python
-playwright_mcp_client = MCPClient(lambda: stdio_client(
-    StdioServerParameters(
-        command="npx", 
-        args=["@playwright/mcp@latest"]  # Remove --headless flag
-    )
-))
+```bash
+python web_automation_agent.py --visible
 ```
+
+The MCP client automatically configures the appropriate browser mode based on your command-line arguments.
 
 ## 🎯 Web Automation Capabilities
 

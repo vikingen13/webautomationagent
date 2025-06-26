@@ -10,6 +10,8 @@ from strands.tools.mcp import MCPClient
 from mcp import stdio_client, StdioServerParameters
 import logging
 import asyncio
+import argparse
+import argparse
 
 # Enable debug logging to see what's happening
 logging.getLogger("strands").setLevel(logging.INFO)
@@ -18,19 +20,28 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-def main():
-    """Main function to run the web automation agent with proper MCP context management."""
+def main(headless=True):
+    """Main function to run the web automation agent with proper MCP context management.
+    
+    Args:
+        headless (bool): Whether to run the browser in headless mode. Default is True.
+    """
     
     print("Web Automation Agent is starting...")
     print("This agent can browse the web and interact with websites using Playwright!")
+    print(f"Browser mode: {'Headless' if headless else 'Visible'}")
     print("Type 'quit' to exit")
     print("-" * 60)
     
-    # Create MCP client for Playwright
+    # Create MCP client for Playwright with headless option
+    playwright_args = ["@playwright/mcp@latest", "--output-dir=./screenshots/"]
+    if headless:
+        playwright_args.append("--headless")
+    
     playwright_mcp_client = MCPClient(lambda: stdio_client(
         StdioServerParameters(
             command="npx", 
-            args=["@playwright/mcp@latest", "--headless", "--output-dir=./screenshots/"]
+            args=playwright_args
         )
     ))
     
@@ -102,7 +113,7 @@ Be conversational, friendly, and helpful in all responses. Always explain what y
                     # Process the message through the agent
                     print("Agent: ", end="", flush=True)
                     response = agent(user_input)
-                    print(response.message)
+                    print("\n")
                     
                 except KeyboardInterrupt:
                     print("\nAgent: breaked!")
@@ -113,4 +124,14 @@ Be conversational, friendly, and helpful in all responses. Always explain what y
         print(f"❌ Could not connect to Playwright MCP server: {e}")
 
 if __name__ == "__main__":
-    main()
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Web Automation Agent with Playwright")
+    parser.add_argument(
+        "--visible", 
+        action="store_true", 
+        help="Run browser in visible mode (not headless)"
+    )
+    args = parser.parse_args()
+    
+    # Run with headless=False if --visible flag is provided
+    main(headless=not args.visible)
