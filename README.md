@@ -82,6 +82,14 @@ The agent runs locally and integrates with Amazon Bedrock for AI capabilities wh
    
    The agent runs in headless mode by default for efficient automation. Use the `--visible` flag when you want to see the browser interactions in real-time.
 
+### Special Commands
+
+During runtime, you can use these special commands:
+
+- **`aws-check`** - Check current AWS credentials status
+- **`aws-update`** - Update AWS credentials without restarting the agent
+- **`quit`** or **`exit`** - Exit the agent
+
 ### Example Interactions
 
 - **"Visit google.com and tell me what you see"**
