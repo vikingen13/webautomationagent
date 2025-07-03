@@ -5,7 +5,7 @@ An agent that can browse the web, interact with pages, and perform web automatio
 """
 
 from strands import Agent, tool
-from strands_tools import current_time, calculator
+from strands_tools import current_time, calculator, file_read, file_write, editor, file_read, file_write, editor
 from strands.tools.mcp import MCPClient
 from mcp import stdio_client, StdioServerParameters
 import logging
@@ -14,10 +14,8 @@ import argparse
 import os
 import boto3
 from botocore.exceptions import NoCredentialsError, CredentialRetrievalError
-import os
-import boto3
-from botocore.exceptions import NoCredentialsError, CredentialRetrievalError
-import argparse
+from pathlib import Path
+import subprocess
 
 # Enable debug logging to see what's happening
 logging.getLogger("strands").setLevel(logging.INFO)
@@ -43,6 +41,18 @@ def check_aws_credentials():
     except Exception as e:
         return False, f"Error checking AWS credentials: {str(e)}"
 
+def get_session_token_from_clipboard():
+    """Try to get session token from clipboard (macOS)."""
+    try:
+        result = subprocess.run(['pbpaste'], capture_output=True, text=True)
+        if result.returncode == 0:
+            token = result.stdout.strip()
+            if len(token) > 100:  # Reasonable length for a session token
+                return token
+    except Exception:
+        pass
+    return None
+
 def update_aws_credentials():
     """Update AWS credentials via environment variables."""
     print("🔄 Update AWS Credentials")
@@ -63,15 +73,32 @@ def update_aws_credentials():
     if secret_key:
         os.environ['AWS_SECRET_ACCESS_KEY'] = secret_key
     
-    session_token = input(f"AWS Session Token (optional) [{'*' * 8 if current_session_token else ''}]: ").strip()
-    if session_token:
-        os.environ['AWS_SESSION_TOKEN'] = session_token
-    elif not session_token and current_session_token:
-        # Clear session token if user pressed enter and there was one before
-        if input("Clear existing session token? (y/N): ").lower().startswith('y'):
-            os.environ.pop('AWS_SESSION_TOKEN', None)
+    # Handle session token with clipboard method
+    print(f"\n🎫 AWS Session Token [{'Present' if current_session_token else 'Not set'}]:")
     
-    region = input(f"AWS Region [{current_region}]: ").strip()
+    if current_session_token:
+        clear_token = input("Clear existing session token? (y/N): ").lower().startswith('y')
+        if clear_token:
+            os.environ.pop('AWS_SESSION_TOKEN', None)
+            print("✅ Session token cleared")
+            current_session_token = ''
+    
+    if not current_session_token:
+        add_token = input("Add session token? (y/N): ").lower().startswith('y')
+        if add_token:
+            print("\n📋 Trying to read session token from clipboard...")
+            print("💡 Make sure you've copied your AWS session token before proceeding")
+            
+            session_token = get_session_token_from_clipboard()
+            if session_token:
+                os.environ['AWS_SESSION_TOKEN'] = session_token
+                print(f"✅ Session token set from clipboard (length: {len(session_token)} characters)")
+            else:
+                print("❌ No valid session token found in clipboard")
+                print("💡 Copy your session token and try 'aws-update' again")
+                print("   Or set it manually: export AWS_SESSION_TOKEN='your-token-here'")
+    
+    region = input(f"\nAWS Region [{current_region}]: ").strip()
     if region:
         os.environ['AWS_DEFAULT_REGION'] = region
     elif not region and not current_region:
@@ -81,6 +108,7 @@ def update_aws_credentials():
     boto3.DEFAULT_SESSION = None
     
     # Verify the new credentials
+    print("\n🔍 Verifying credentials...")
     is_valid, message = check_aws_credentials()
     if is_valid:
         print(f"✅ {message}")
@@ -100,10 +128,13 @@ def create_agent(playwright_tools, context=None):
     Returns:
         Agent: A new agent instance
     """
-    # Collect all tools
+    # Collect all tools including file operations
     all_tools = [
         current_time, 
-        calculator
+        calculator,
+        file_read,
+        file_write,
+        editor
     ]
     all_tools.extend(playwright_tools)
     
@@ -111,16 +142,17 @@ def create_agent(playwright_tools, context=None):
     agent = Agent(
         model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
         tools=all_tools,
-        system_prompt="""You are a helpful Web Automation Agent built with Strands Agents SDK and Playwright capabilities.
+        system_prompt="""You are a helpful Web Automation Agent built with Strands Agents SDK with web browsing and file management capabilities.
 
 Your personality and capabilities:
-- You're enthusiastic, helpful, and great at web automation tasks
+- You're enthusiastic, helpful, and great at web automation and file management tasks
 - You can browse websites, interact with web pages, fill forms, click buttons, and extract information
+- You can read, write, edit, and manage files in the current workspace
 - You respond warmly to greetings
 - You can tell the current time and perform calculations when asked
 - You explain what you can do when asked for help
 - You give friendly goodbyes
-- You do not invent answers. If asked to do something using a website, you rely only on informations from that website.
+- You do not invent answers. If asked to do something using a website, you rely only on information from that website.
 
 Web Automation Capabilities:
 - Navigate to websites and browse pages
@@ -132,10 +164,25 @@ Web Automation Capabilities:
 - Wait for elements to load
 - Perform searches and interactions
 
-When someone asks what you can do or says help, explain your capabilities including web automation.
-When asked to browse the web or interact with websites, use the Playwright tools to accomplish the task.
+File Management Capabilities:
+- Read files from the workspace using file_read
+- Write content to files using file_write (create new or overwrite existing)
+- Advanced file editing operations using editor (modify specific parts of files)
+- All file operations work with the current directory and subdirectories
 
-Be conversational, friendly, and helpful in all responses. Always explain what you're doing when performing web automation tasks.""",
+Common Use Cases:
+- Extract data from websites and save it to files
+- Read configuration files before performing web automation
+- Save screenshots and reports from web interactions
+- Create logs of web automation activities
+- Process data files and use the information for web tasks
+- Edit existing files to update configurations or data
+
+When someone asks what you can do or says help, explain your capabilities including both web automation and file management.
+When asked to browse the web or interact with websites, use the Playwright tools to accomplish the task.
+When asked to work with files, use the file_read, file_write, or editor tools as appropriate.
+
+Be conversational, friendly, and helpful in all responses. Always explain what you're doing when performing web automation or file management tasks.""",
         messages=context
     )
     
@@ -218,12 +265,15 @@ def main(headless=True):
             # Create initial agent
             agent = create_agent(playwright_tools)
             
-            print("✅ Playwright web automation is ready!")
+            print("✅ Playwright web automation and file management are ready!")
             print("Try asking me to:")
-            print("  - Visit a website and tell you about it")
-            print("  - Search for something on Google")
+            print("  - Visit a website and save the content to a file")
+            print("  - Read a configuration file and use it for web automation")
+            print("  - Search for something on Google and save results")
+            print("  - Extract data from a website and create a report")
             print("  - Fill out a form on a website")
             print("  - Extract information from a web page")
+            print("  - Read, write, or edit files in the workspace")
             print("\nSpecial commands:")
             print("  - Type 'aws-update' to update AWS credentials")
             print("  - Type 'aws-check' to check current AWS credentials")

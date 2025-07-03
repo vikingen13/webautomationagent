@@ -12,6 +12,7 @@ The agent runs locally and integrates with Amazon Bedrock for AI capabilities wh
 
 - **Natural Language Web Automation**: Control web browsers through conversational AI
 - **Comprehensive Web Interactions**: Navigate, click, fill forms, extract data, and take screenshots
+- **File Management**: Read, write, and edit files in the workspace
 - **Playwright Integration**: Leverages Playwright's robust web automation capabilities via MCP
 - **Multi-tool Support**: Includes time utilities and calculator functions
 - **Interactive Chat Interface**: Conversational interface for easy interaction
@@ -87,18 +88,41 @@ The agent runs locally and integrates with Amazon Bedrock for AI capabilities wh
 During runtime, you can use these special commands:
 
 - **`aws-check`** - Check current AWS credentials status
-- **`aws-update`** - Update AWS credentials without restarting the agent
+- **`aws-update`** - Update AWS credentials without restarting the agent (with clipboard session token support)
 - **`quit`** or **`exit`** - Exit the agent
+
+### AWS Credentials Setup
+
+The agent requires AWS credentials to access Bedrock. For session tokens (which can be very long), the agent uses clipboard reading:
+
+**Method 1: Use the built-in credential updater with clipboard**
+```bash
+# 1. Copy your AWS session token to clipboard
+# 2. In the agent, type:
+aws-update
+# 3. The agent will automatically read the session token from clipboard
+```
+
+**Method 2: Set environment variables manually**
+```bash
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+export AWS_SESSION_TOKEN="your-very-long-session-token"
+export AWS_DEFAULT_REGION="us-east-1"
+```
 
 ### Example Interactions
 
 - **"Visit google.com and tell me what you see"**
-- **"Search for 'Python web scraping' on Google"**
+- **"Search for 'Python web scraping' on Google and save results to a file"**
 - **"Go to example.com and take a screenshot"**
 - **"Fill out the contact form on [website] with test data"**
-- **"Extract all the links from the current page"**
+- **"Extract all the links from the current page and write them to links.txt"**
+- **"Read the config.json file and tell me what's in it"**
 - **"What time is it?"**
 - **"Calculate 15 * 24"**
+- **"Create a report file with today's web scraping results"**
+- **"Edit the configuration file to update the API endpoint"**
 
 ## 🧪 Testing
 
