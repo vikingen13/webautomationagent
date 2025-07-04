@@ -200,35 +200,6 @@ Be conversational, friendly, and helpful in all responses. Always explain what y
             print("   Agent created with fresh context")
     
     return agent
-    """Force a complete refresh of all AWS credential caches."""
-    try:
-        # Clear boto3 caches
-        boto3.DEFAULT_SESSION = None
-        
-        # Clear botocore credential cache
-        import botocore.session
-        if hasattr(botocore.session, '_session_cache'):
-            botocore.session._session_cache.clear()
-        
-        # Clear any cached credentials in botocore
-        from botocore.credentials import CredentialResolver
-        if hasattr(CredentialResolver, '_cache'):
-            CredentialResolver._cache = {}
-            
-        # Try to clear Strands/Anthropic client caches if they exist
-        try:
-            import anthropic
-            # Reset any cached clients
-            if hasattr(anthropic, '_client_cache'):
-                anthropic._client_cache.clear()
-        except:
-            pass
-            
-        print("🔄 Cleared all AWS credential caches")
-        
-    except Exception as e:
-        print(f"⚠️  Warning: Could not clear all caches: {e}")
-        print("   You may need to restart the agent for full credential refresh")
 
 def main(headless=True):
     """Main function to run the web automation agent with proper MCP context management.
